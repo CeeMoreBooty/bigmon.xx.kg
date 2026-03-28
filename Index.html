@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Domain Creator & Live Checker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body {
+    margin: 0;
+    background: #0b0f19;
+    color: #e5e7eb;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .container {
+    width: 100%;
+    max-width: 900px;
+    background: #111827;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.4);
+  }
+  h1 {
+    margin: 0 0 10px;
+    font-size: 2rem;
+    color: #38bdf8;
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  input, select, button {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+  }
+  input, select {
+    background: #1f2937;
+    color: #e5e7eb;
+    flex: 1;
+  }
+  button {
+    background: #38bdf8;
+    color: #0b1120;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  button:hover {
+    filter: brightness(1.1);
+  }
+  .result {
+    margin-top: 20px;
+    padding: 20px;
+    background: #1f2937;
+    border-radius: 12px;
+  }
+  .available {
+    color: #4ade80;
+    font-weight: bold;
+  }
+  .taken {
+    color: #f87171;
+    font-weight: bold;
+  }
+  .suggestions {
+    margin-top: 20px;
+  }
+  .suggestions span {
+    display: inline-block;
+    background: #374151;
+    padding: 6px 12px;
+    border-radius: 8px;
+    margin: 4px;
+    cursor: pointer;
+  }
+  .suggestions span:hover {
+    background: #4b5563;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Domain Creator + Live Availability Checker</h1>
+
+  <div class="row">
+    <input id="domainInput" type="text" placeholder="Enter name (e.g. mybrand)" />
+    <select id="tldSelect">
+      <option>.com</option>
+      <option>.net</option>
+      <option>.org</option>
+      <option>.io</option>
+      <option>.dev</option>
+      <option>.app</option>
+      <option value="">(custom)</option>
+    </select>
+    <button onclick="checkDomain()">Check</button>
+  </div>
+
+  <div id="result" class="result">Enter a domain to begin.</div>
+
+  <h3>Suggestions</h3>
+  <div id="suggestions" class="suggestions"></div>
+</div>
+
+<script>
+const API = "https://agent-gateway-kappa.vercel.app/v1/agent-dns/api/check/";
+
+function normalize(name, tld) {
+  name = name.trim().toLowerCase();
+  if (!name) return "";
+  if (name.includes(".")) return name;
+  return name + tld;
+}
+
+async function checkDomain() {
+  const name = document.getElementById("domainInput").value;
+  const tld = document.getElementById("tldSelect").value;
+  const domain = normalize(name, tld);
+
+  if (!domain) {
+    document.getElementById("result").innerHTML = "Please enter a domain.";
+    return;
+  }
+
+  document.getElementById("result").innerHTML = "Checking…";
+
+  try {
+    const res = await fetch(API + domain);
+    const data = await res.json();
+
+    if (data.available) {
+      document.getElementById("result").innerHTML =
+        `<span class='available'>✔ ${domain} is AVAILABLE</span><br>
+         You can register it at any registrar (Namecheap, Cloudflare, etc.)`;
+    } else {
+      document.getElementById("result").innerHTML =
+        `<span class='taken'>✖ ${domain} is already registered</span>`;
+    }
+  } catch (e) {
+    document.getElementById("result").innerHTML =
+      "Error checking domain. Try again.";
+  }
+
+  generateSuggestions(name);
+}
+
+function generateSuggestions(base) {
+  const tlds = [".com", ".net", ".org", ".io", ".dev", ".app"];
+  const mods = ["get", "try", "go", "my", "the", "official", "hq"];
+
+  let list = [];
+
+  tlds.forEach(t => list.push(base + t));
+  mods.forEach(m => list.push(m + base + ".com"));
+  mods.forEach(m => list.push(base + m + ".com"));
+
+  const container = document.getElementById("suggestions");
+  container.innerHTML = "";
+
+  list.forEach(d => {
+    const el = document.createElement("span");
+    el.textContent = d;
+    el.onclick = () => {
+      document.getElementById("domainInput").value = d;
+      checkDomain();
+    };
+    container.appendChild(el);
+  });
+}
+</script>
+
+</body>
+</html>
